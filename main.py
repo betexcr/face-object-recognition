@@ -63,6 +63,9 @@ def process_frames():
             person_crop = frame[py1:py2, px1:px2]
             face_locs = face_recognition.face_locations(person_crop)
 
+            # Default values to avoid UnboundLocalError
+            age = gender = race = dominant_emotion = "N/A"
+
             for top, right, bottom, left in face_locs:
                 ft, fr, fb, fl = py1 + top, px1 + right, py1 + bottom, px1 + left
                 face_crop = frame[ft:fb, fl:fr]
@@ -87,7 +90,7 @@ def process_frames():
 
                 cv2.rectangle(frame, (fl, ft), (fr, fb), (0, 255, 0), 2)
 
-            # Draw person box
+            # Draw person box and label
             cv2.rectangle(frame, (px1, py1), (px2, py2), (0, 255, 255), 2)
             text = f'Age: {age}, Gender: {gender}, Race: {race}, Mood: {dominant_emotion}'
             cv2.putText(frame, text, (px1, py1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (0, 255, 255), 2)
