@@ -1,16 +1,18 @@
-name: Build Windows EXE
+name: Build & Package Face Recognition App
 
 on:
   push:
     branches: [ main ]
+  pull_request:
+    branches: [ main ]
   workflow_dispatch:
 
 jobs:
-  build-windows:
-    runs-on: windows-latest
+  build:
+    runs-on: ubuntu-latest  # or macos-latest for native camera builds
 
     steps:
-    - name: Checkout repo
+    - name: Checkout code
       uses: actions/checkout@v3
 
     - name: Set up Python
@@ -21,14 +23,25 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install pyinstaller
+        pip install -r requirements.txt pyinstaller
 
-    - name: Build EXE with PyInstaller
+    - name: Optional: Run tests or lint
       run: |
-        pyinstaller --onefile main.py
+        # pytest tests/
+        # flake8 main.py
+        echo "Tests/lint here"
 
-    - name: Upload EXE artifact
-      uses: actions/upload-artifact@v4  
+    - name: Build with PyInstaller
+      run: |
+        pyinstaller main.py \
+          --add-data "shape_predictor_68_face_landmarks.dat:face_recognition_models/models" \
+          --add-data "shape_predictor_5_face_landmarks.dat:face_recognition_models/models" \
+          --add-data "dlib_face_recognition_resnet_model_v1.dat:face_recognition_models/models" \
+          --add-data "mmod_human_face_detector.dat:face_recognition_models/models" \
+          --noconfirm
+
+    - name: Upload build artifact
+      uses: actions/upload-artifact@v3
       with:
-        name: windows-exe
-        path: dist/main.exe
+        name: face-recognition-dist
+        path: dist/
