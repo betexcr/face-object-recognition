@@ -25,12 +25,6 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt pyinstaller
 
-    - name: Optional: Run tests or lint
-      run: |
-        # pytest tests/
-        # flake8 main.py
-        echo "Tests/lint here"
-
     - name: Build with PyInstaller
       run: |
         pyinstaller main.py \
@@ -41,7 +35,7 @@ jobs:
           --noconfirm
 
     - name: Upload build artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: face-recognition-dist
         path: dist/
