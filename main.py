@@ -8,14 +8,198 @@ from collections import defaultdict
 import time
 from threading import Thread
 import queue
+import tkinter as tk
+from tkinter import simpledialog, messagebox
 
+def select_camera_gui():
+    """
+    GUI dialog for camera selection using tkinter
+    Returns the camera index selected by user
+    Exits if no cameras are detected
+    """
+    print("\n" + "="*60)
+    print("DETECTING CAMERAS...")
+    print("="*60)
+    
+    # Detect available cameras
+    available_cameras = []
+    camera_info = {}
+    
+    for i in range(10):
+        cap = cv2.VideoCapture(i)
+        if cap.isOpened():
+            ret, frame = cap.read()
+            if ret:
+                width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+                height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+                available_cameras.append(i)
+                camera_info[i] = f"Camera {i} ({width}x{height})"
+                print(f"✓ Found: {camera_info[i]}")
+            cap.release()
+    
+    if not available_cameras:
+        print("\n" + "="*60)
+        print("✗ CRITICAL ERROR: NO CAMERAS DETECTED!")
+        print("="*60)
+        print("\nThe application requires at least one camera to run.")
+        print("Please:")
+        print("  1. Connect a camera to your computer")
+        print("  2. Ensure the camera is not in use by another application")
+        print("  3. Check device manager for camera driver issues")
+        print("  4. Restart the application")
+        print("="*60 + "\n")
+        
+        # Show error dialog
+        try:
+            root = tk.Tk()
+            root.withdraw()
+            messagebox.showerror(
+                "No Camera Found",
+                "⚠ No cameras detected!\n\n"
+                "This application requires at least one camera connected.\n\n"
+                "Please:\n"
+                "  • Connect a camera to your computer\n"
+                "  • Ensure camera is not in use by other apps\n"
+                "  • Check device drivers\n\n"
+                "Then restart the application."
+            )
+            root.destroy()
+        except Exception as e:
+            print(f"Could not show dialog: {e}")
+        
+        # Exit the application
+        import sys
+        sys.exit(1)
+    
+    # Single or multiple cameras - show confirmation dialog
+    print(f"\n✓ Found {len(available_cameras)} camera(s). Opening camera selector dialog...")
+    
+    try:
+        root = tk.Tk()
+        root.title("Camera Selection")
+        root.geometry("450x350")
+        root.resizable(False, False)
+        
+        # Set window to always on top
+        root.attributes('-topmost', True)
+        
+        # Center window on screen
+        root.update_idletasks()
+        x = (root.winfo_screenwidth() // 2) - (225)
+        y = (root.winfo_screenheight() // 2) - (175)
+        root.geometry(f"+{x}+{y}")
+        
+        selected_camera = tk.IntVar(value=available_cameras[0])
+        
+        # Title
+        title_label = tk.Label(root, text="📷 Select Camera", font=("Arial", 16, "bold"), fg="#333")
+        title_label.pack(pady=15)
+        
+        # Description
+        if len(available_cameras) == 1:
+            desc_text = "One camera found. Ready to start:"
+        else:
+            desc_text = "Multiple cameras found. Please select one:"
+        desc_label = tk.Label(root, text=desc_text, font=("Arial", 11), fg="#666")
+        desc_label.pack(pady=5)
+        
+        # Radio buttons frame with scrolling support
+        frame = tk.Frame(root, bg="white")
+        frame.pack(pady=10, padx=20, fill=tk.BOTH, expand=True)
+        
+        for cam_id in available_cameras:
+            radio = tk.Radiobutton(
+                frame,
+                text=camera_info[cam_id],
+                variable=selected_camera,
+                value=cam_id,
+                font=("Arial", 12),
+                pady=12,
+                bg="white",
+                activebackground="#e3f2fd",
+                selectcolor="#2196F3"
+            )
+            radio.pack(anchor=tk.W, fill=tk.X, padx=10)
+        
+        # Buttons
+        button_frame = tk.Frame(root, bg="#f5f5f5")
+        button_frame.pack(pady=15, fill=tk.X, padx=20)
+        
+        selected = [None]
+        
+        def on_ok():
+            selected[0] = selected_camera.get()
+            print(f"✓ Selected camera {selected[0]}")
+            root.destroy()
+        
+        def on_cancel():
+            print("✗ Application cancelled by user")
+            import sys
+            sys.exit(0)
+        
+        ok_btn = tk.Button(
+            button_frame, 
+            text="✓ Start", 
+            command=on_ok, 
+            font=("Arial", 11, "bold"),
+            bg="#4CAF50", 
+            fg="white", 
+            padx=25, 
+            pady=10,
+            cursor="hand2",
+            relief=tk.RAISED,
+            bd=2
+        )
+        ok_btn.pack(side=tk.LEFT, padx=5)
+        
+        cancel_btn = tk.Button(
+            button_frame, 
+            text="Cancel", 
+            command=on_cancel, 
+            font=("Arial", 11),
+            bg="#f44336", 
+            fg="white", 
+            padx=25, 
+            pady=10,
+            cursor="hand2",
+            relief=tk.RAISED,
+            bd=2
+        )
+        cancel_btn.pack(side=tk.LEFT, padx=5)
+        
+        # Focus and show
+        root.focus_force()
+        root.lift()
+        
+        print("\n⚠ Camera selection dialog is open. Please confirm selection.")
+        print("="*60)
+        
+        root.mainloop()
+        
+        return selected[0] if selected[0] is not None else available_cameras[0]
+        
+    except Exception as e:
+        print(f"✗ Dialog error: {e}")
+        print(f"✓ Using default camera {available_cameras[0]}")
+        return available_cameras[0]
+
+# Select camera via GUI before loading model
+print("\n" + "="*60)
+print("FACE RECOGNITION - INITIALIZING")
+print("="*60)
+
+selected_camera = select_camera_gui()
+
+print(f"\nLoading YOLOv8 model...")
 # Load YOLOv8 nano model
 yolo_model = YOLO('yolov8n.pt')
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 yolo_model.to(device)
+print(f"✓ Model loaded on {device}")
 
-# Capture video
-video_capture = cv2.VideoCapture(0)
+# Capture video with selected camera
+print(f"Opening camera {selected_camera}...")
+video_capture = cv2.VideoCapture(selected_camera)
 frame_queue = queue.Queue(maxsize=5)
 display_queue = queue.Queue(maxsize=1)
 

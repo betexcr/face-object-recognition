@@ -8,8 +8,8 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
-    runs-on: ubuntu-latest  # or macos-latest for native camera builds
+  build-macos:
+    runs-on: macos-latest
 
     steps:
     - name: Checkout code
@@ -20,22 +20,21 @@ jobs:
       with:
         python-version: '3.11'
 
-    - name: Install dependencies
+    - name: Install build dependencies
+      run: |
+        brew install cmake
+
+    - name: Install Python dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install -r requirements.txt pyinstaller
+        pip install -r requirements.txt
 
-    - name: Build with PyInstaller
+    - name: Build macOS app with PyInstaller
       run: |
-        pyinstaller main.py \
-          --add-data "shape_predictor_68_face_landmarks.dat:face_recognition_models/models" \
-          --add-data "shape_predictor_5_face_landmarks.dat:face_recognition_models/models" \
-          --add-data "dlib_face_recognition_resnet_model_v1.dat:face_recognition_models/models" \
-          --add-data "mmod_human_face_detector.dat:face_recognition_models/models" \
-          --noconfirm
+        python build_mac.py
 
     - name: Upload build artifact
       uses: actions/upload-artifact@v4
       with:
-        name: face-recognition-dist
+        name: face-recognition-macos
         path: dist/

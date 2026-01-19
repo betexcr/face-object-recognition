@@ -71,3 +71,15 @@ pip install opencv-python torch torchvision torchaudio deepface face_recognition
 ```bash
 python main.py
 ```
+
+---
+
+## Build a macOS app
+
+PyInstaller builds are platform-specific, so run this on a Mac.
+
+```bash
+python build_mac.py
+```
+
+The app bundle will be created at `dist/FaceRecognition.app`.
